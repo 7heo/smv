@@ -1,0 +1,29 @@
+#!/bin/sh
+
+usage() {
+	printf 'Usage: %s <path to authorized command>\n' "$0" >&2
+	exit "${1:-1}"
+}
+
+FATAL() {
+	printf 'FATAL: %s. Aborting...\n' "$*" >&2
+	exit 1
+}
+
+[ $# -lt 1 ] && usage 1
+
+command_path="$1"
+command_name="$(basename "$1")"
+remote_command_name="${SSH_ORIGINAL_COMMAND%% *}"
+
+resolved_path="$(command -v "$command_name")"
+
+[ "$resolved_path" != "$command_path" ] \
+	&& FATAL "Could not find command $command_name on the system"
+[ "$remote_command_name" != "$command_name" ] \
+	&& FATAL "Command '$remote_command_name' is not authorized"
+
+set -- $SSH_ORIGINAL_COMMAND
+shift
+set -- "$command_path" "$@"
+exec "$@"
